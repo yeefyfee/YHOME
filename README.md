@@ -1,2 +1,3 @@
 # YHOME
-PAGE:https://yeehome.netlify.app/
+
+主页：https://yeehome.netlify.app/
