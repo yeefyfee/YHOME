@@ -30,14 +30,68 @@ var iUp = (function () {
 $(document).ready(function () {
 
 	// 获取一言数据
-	fetch('https://v1.hitokoto.cn').then(function (res) {
-		return res.json();
-	}).then(function (e) {
-		$('#description').html(e.hitokoto + "<br/> -「<strong>" + e.from + "</strong>」")
-	}).catch(function (err) {
-		console.error(err);
-	})
-// var url = 'https://query.yahooapis.com/v1/public/yql' + 
+	// 本地一言数据
+	const localHitokoto = [
+		{ hitokoto: "每一个人都应该明确自己的方向和位置", from: "ASYEE" },
+		{ hitokoto: "生活不止眼前的苟且，还有诗和远方", from: "汪国真" },
+		{ hitokoto: "愿你保持初心和善良，笑里尽是温暖与坦荡", from: "千年老妖" },
+		{ hitokoto: "一个人至少拥有一个梦想，有一个理由去坚强", from: "闻一多" },
+		{ hitokoto: "把喜欢的一切留在身边，把温暖的记忆藏在心间", from: "匿名" }
+	];
+
+	// 备用API列表
+	const apiEndpoints = [
+		'https://v1.hitokoto.cn',
+		'https://international.v1.hitokoto.cn',
+		'https://api.maho.cc/yiyan/'
+	];
+
+	async function fetchHitokoto() {
+		let lastError = null;
+		const target = document.getElementById('description');
+
+		// 尝试所有API端点
+		for (const endpoint of apiEndpoints) {
+			try {
+				const res = await fetch(endpoint);
+				const data = await res.json();
+				const text = data.hitokoto + "<br/> -「<strong>" + data.from + "</strong>」";
+				target.innerHTML = text;
+				
+				// 5秒后获取新的一言
+				setTimeout(fetchHitokoto, 5000);
+				return;
+			} catch (err) {
+				console.error(`API ${endpoint} failed:`, err);
+				lastError = err;
+				continue; // 尝试下一个API
+			}
+		}
+
+		// 所有API都失败时，使用本地数据
+		if (lastError) {
+			console.log('All APIs failed, using local data');
+			const randomIndex = Math.floor(Math.random() * localHitokoto.length);
+			const localData = localHitokoto[randomIndex];
+			const text = localData.hitokoto + "<br/> -「<strong>" + localData.from + "</strong>」";
+			target.innerHTML = text;
+
+			// 10秒后重试API
+			setTimeout(fetchHitokoto, 10000);
+		}
+	}
+
+	// 初始获取一言
+	fetchHitokoto();
+
+	// 监听页面可见性变化
+	document.addEventListener('visibilitychange', function() {
+		if (!document.hidden) {
+			fetchHitokoto();
+		}
+	});
+
+	// var url = 'https://query.yahooapis.com/v1/public/yql' + 
 	// '?q=' + encodeURIComponent('select * from json where url=@url') +
 	// '&url=' + encodeURIComponent('https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=8') +
 	// '&format=json&callback=?';
@@ -48,37 +102,32 @@ $(document).ready(function () {
 	 * 改用 JsonBird：https://bird.ioliu.cn/
 	 * 
 	 */
-	var url = '';
-	var imgUrls = JSON.parse(sessionStorage.getItem("imgUrls"));
-	var index = sessionStorage.getItem("index");
 	var $panel = $('#panel');
-	if (imgUrls == null) {
-		imgUrls = new Array();
-		index = 0;
-		$.get(url, function (result) {
-			images = result.images;
-			for (let i = 0; i < images.length; i++) {
-				const item = images[i];
-				imgUrls.push(item.url);
-			}
-			var imgUrl = imgUrls[index];
-			var url = "https://www.bing.com" + imgUrl;
-			$panel.css("background", "url('" + url + "') center center no-repeat #666");
-			$panel.css("background-size", "cover");
-			sessionStorage.setItem("imgUrls", JSON.stringify(imgUrls));
-			sessionStorage.setItem("index", index);
-		});
-	} else {
-		if (index == 7)
+	var localImages = [
+		'/images/510.webp',
+		'/images/kj.webp'
+	];
+	var index = parseInt(sessionStorage.getItem("index")) || 0;
+
+	// 设置背景图片
+	function setBackground() {
+		if (index >= localImages.length) {
 			index = 0;
-		else
-			index++;
-		var imgUrl = imgUrls[index];
-		var url = "https://www.bing.com" + imgUrl;
-		$panel.css("background", "url('" + url + "') center center no-repeat #666");
+		}
+		var imgUrl = localImages[index];
+		$panel.css("background", "url('" + imgUrl + "') center center no-repeat #666");
 		$panel.css("background-size", "cover");
 		sessionStorage.setItem("index", index);
 	}
+
+	// 初始设置背景
+	setBackground();
+
+	// 每30秒切换一次背景
+	setInterval(function() {
+		index++;
+		setBackground();
+	}, 30000);
 
 	$(".iUp").each(function (i, e) {
 		iUp.up(e);
